@@ -95,10 +95,24 @@ function LoginPageClient() {
     }
   }, []);
 
-  // 初始化 Turnstile
+  // 预加载 Turnstile 脚本
   useEffect(() => {
-    if (typeof window === 'undefined' || !enableRegister || !isRegisterMode) {
-      // 清理已存在的 widget
+    if (typeof window === 'undefined' || !enableRegister) return;
+    if (document.getElementById('turnstile-script')) return;
+
+    const script = document.createElement('script');
+    script.id = 'turnstile-script';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+  }, [enableRegister]);
+
+  // 渲染 Turnstile widget
+  useEffect(() => {
+    if (typeof window === 'undefined' || !enableRegister) return;
+
+    if (!isRegisterMode) {
       if (turnstileWidgetRef.current && (window as any).turnstile) {
         (window as any).turnstile.remove(turnstileWidgetRef.current);
         turnstileWidgetRef.current = null;
@@ -106,44 +120,42 @@ function LoginPageClient() {
       return;
     }
 
-    // 如果 widget 已存在，不需要重新创建
-    if (turnstileWidgetRef.current) return;
+    const renderWidget = () => {
+      if (!(window as any).turnstile) return;
+      if (turnstileWidgetRef.current) return;
 
-    const script = document.createElement('script');
-    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
+      const container = document.getElementById('turnstile-container');
+      if (!container) return;
 
-    const checkWidget = setInterval(() => {
-      if ((window as any).turnstile) {
-        clearInterval(checkWidget);
-        const widgetId = (window as any).turnstile.render(
-          '#turnstile-container',
-          {
-            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '',
-            callback: (token: string) => {
-              setTurnstileToken(token);
-            },
-            'error-callback': () => {
-              setTurnstileToken(null);
-            },
-            'expired-callback': () => {
-              setTurnstileToken(null);
-            },
-          }
-        );
-        turnstileWidgetRef.current = widgetId;
-      }
-    }, 100);
-
-    return () => {
-      clearInterval(checkWidget);
-      script.remove();
-      if (turnstileWidgetRef.current && (window as any).turnstile) {
-        (window as any).turnstile.remove(turnstileWidgetRef.current);
-      }
+      const widgetId = (window as any).turnstile.render(
+        '#turnstile-container',
+        {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '',
+          callback: (token: string) => {
+            setTurnstileToken(token);
+          },
+          'error-callback': () => {
+            setTurnstileToken(null);
+          },
+          'expired-callback': () => {
+            setTurnstileToken(null);
+          },
+        }
+      );
+      turnstileWidgetRef.current = widgetId;
     };
+
+    if ((window as any).turnstile) {
+      renderWidget();
+    } else {
+      const checkWidget = setInterval(() => {
+        if ((window as any).turnstile) {
+          clearInterval(checkWidget);
+          renderWidget();
+        }
+      }, 50);
+      return () => clearInterval(checkWidget);
+    }
   }, [enableRegister, isRegisterMode]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
