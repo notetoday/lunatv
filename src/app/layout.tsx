@@ -46,7 +46,8 @@ export default async function RootLayout({
     process.env.ANNOUNCEMENT ||
     '本网站仅提供影视信息搜索服务，所有内容均来自第三方网站。本站不存储任何视频资源，不对任何内容的准确性、合法性、完整性负责。';
 
-  let doubanProxyType = process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'cmliussss-cdn-tencent';
+  let doubanProxyType =
+    process.env.NEXT_PUBLIC_DOUBAN_PROXY_TYPE || 'cmliussss-cdn-tencent';
   let doubanProxy = process.env.NEXT_PUBLIC_DOUBAN_PROXY || '';
   let doubanImageProxyType =
     process.env.NEXT_PUBLIC_DOUBAN_IMAGE_PROXY_TYPE || 'cmliussss-cdn-tencent';
@@ -80,7 +81,9 @@ export default async function RootLayout({
     }));
     fluidSearch = config.SiteConfig.FluidSearch;
     enableWebLive = config.SiteConfig.EnableWebLive ?? false;
-    enableRegister = config.UserConfig.AllowRegister ?? false;
+    enableRegister = config.UserConfig.AllowRegister ?? process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
+  } else {
+    enableRegister = process.env.NEXT_PUBLIC_ENABLE_REGISTER === 'true';
   }
 
   // 将运行时配置注入到全局 window 对象，供客户端在运行时读取
