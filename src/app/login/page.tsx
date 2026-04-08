@@ -78,6 +78,7 @@ function LoginPageClient() {
   const [loading, setLoading] = useState(false);
   const [shouldAskUsername, setShouldAskUsername] = useState(false);
   const [enableRegister, setEnableRegister] = useState(false);
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileWidgetRef = useRef<any>(null);
 
@@ -95,8 +96,9 @@ function LoginPageClient() {
   }, []);
 
   // 初始化 Turnstile
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (typeof window === 'undefined' || !enableRegister) return;
+    if (typeof window === 'undefined' || !enableRegister || !isRegisterMode) return;
 
     const script = document.createElement('script');
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
@@ -133,6 +135,7 @@ function LoginPageClient() {
         (window as any).turnstile.remove(turnstileWidgetRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enableRegister]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -251,7 +254,7 @@ function LoginPageClient() {
           </div>
 
           {/* 注册时显示确认密码 */}
-          {shouldAskUsername && enableRegister && (
+          {shouldAskUsername && isRegisterMode && (
             <div>
               <label htmlFor='confirm-password' className='sr-only'>
                 确认密码
@@ -273,7 +276,7 @@ function LoginPageClient() {
           )}
 
           {/* Turnstile 验证容器 */}
-          {shouldAskUsername && enableRegister && (
+          {shouldAskUsername && isRegisterMode && (
             <div className='flex justify-center'>
               <div id='turnstile-container'></div>
             </div>
@@ -281,25 +284,58 @@ function LoginPageClient() {
 
           {/* 登录 / 注册按钮 */}
           {shouldAskUsername && enableRegister ? (
-            <div className='flex gap-4'>
-              <button
-                type='button'
-                onClick={handleRegister}
-                disabled={!password || !username || loading}
-                className='flex-1 inline-flex justify-center rounded-lg bg-blue-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
-              >
-                {loading ? '注册中...' : '注册'}
-              </button>
-              <button
-                type='submit'
-                disabled={
-                  !password || loading || (shouldAskUsername && !username)
-                }
-                className='flex-1 inline-flex justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-green-600 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
-              >
-                {loading ? '登录中...' : '登录'}
-              </button>
-            </div>
+            isRegisterMode ? (
+              <div className='space-y-4'>
+                <div className='flex gap-4'>
+                  <button
+                    type='button'
+                    onClick={handleRegister}
+                    disabled={!password || !username || loading}
+                    className='flex-1 inline-flex justify-center rounded-lg bg-blue-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50'
+                  >
+                    {loading ? '注册中...' : '注册'}
+                  </button>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setIsRegisterMode(false);
+                      setConfirmPassword('');
+                      setError(null);
+                    }}
+                    disabled={loading}
+                    className='flex-1 inline-flex justify-center rounded-lg bg-gray-500 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50'
+                  >
+                    返回登录
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className='space-y-4'>
+                <button
+                  type='submit'
+                  disabled={
+                    !password || loading || (shouldAskUsername && !username)
+                  }
+                  className='w-full inline-flex justify-center rounded-lg bg-green-600 py-3 text-base font-semibold text-white shadow-lg transition-all duration-200 hover:from-green-600 hover:to-blue-600 disabled:cursor-not-allowed disabled:opacity-50'
+                >
+                  {loading ? '登录中...' : '登录'}
+                </button>
+                <p className='text-center text-sm text-gray-500 dark:text-gray-400'>
+                  还没有账号？{' '}
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setIsRegisterMode(true);
+                      setConfirmPassword('');
+                      setError(null);
+                    }}
+                    className='text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-500'
+                  >
+                    立即注册
+                  </button>
+                </p>
+              </div>
+            )
           ) : (
             <button
               type='submit'
