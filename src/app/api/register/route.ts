@@ -65,13 +65,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '当前未开放注册' }, { status: 400 });
     }
 
-    const { username, password } = await req.json();
+    const { username, password, turnstileToken } = await req.json();
 
     if (!username || typeof username !== 'string') {
       return NextResponse.json({ error: '用户名不能为空' }, { status: 400 });
     }
     if (!password || typeof password !== 'string') {
       return NextResponse.json({ error: '密码不能为空' }, { status: 400 });
+    }
+
+    // 验证 Turnstile token
+    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+    if (secretKey) {
+      try {
+        const formData = new FormData();
+        formData.append('secret', secretKey);
+        formData.append('response', turnstileToken || '');
+
+        const result = await fetch(
+          'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+          {
+            method: 'POST',
+            body: formData,
+          }
+        );
+        const outcome = await result.json();
+        if (!outcome.success) {
+          return NextResponse.json(
+            { error: '人机验证失败，请重试' },
+            { status: 400 }
+          );
+        }
+      } catch (err) {
+        console.error('Turnstile 验证失败', err);
+        return NextResponse.json({ error: '人机验证失败' }, { status: 500 });
+      }
     }
 
     if (username === process.env.USERNAME) {

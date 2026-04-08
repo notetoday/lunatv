@@ -4,7 +4,7 @@
 
 import { AlertCircle, CheckCircle } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { CURRENT_VERSION } from '@/lib/version';
 import { checkForUpdates, UpdateStatus } from '@/lib/version_check';
@@ -42,12 +42,13 @@ function VersionDisplay() {
       <span className='font-mono'>v{CURRENT_VERSION}</span>
       {!isChecking && updateStatus !== UpdateStatus.FETCH_FAILED && (
         <div
-          className={`flex items-center gap-1.5 ${updateStatus === UpdateStatus.HAS_UPDATE
-            ? 'text-yellow-600 dark:text-yellow-400'
-            : updateStatus === UpdateStatus.NO_UPDATE
+          className={`flex items-center gap-1.5 ${
+            updateStatus === UpdateStatus.HAS_UPDATE
+              ? 'text-yellow-600 dark:text-yellow-400'
+              : updateStatus === UpdateStatus.NO_UPDATE
               ? 'text-green-600 dark:text-green-400'
               : ''
-            }`}
+          }`}
         >
           {updateStatus === UpdateStatus.HAS_UPDATE && (
             <>
@@ -71,11 +72,14 @@ function LoginPageClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [shouldAskUsername, setShouldAskUsername] = useState(false);
   const [enableRegister, setEnableRegister] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileWidgetRef = useRef<any>(null);
 
   const { siteName } = useSite();
 
@@ -89,6 +93,47 @@ function LoginPageClient() {
       );
     }
   }, []);
+
+  // 初始化 Turnstile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !enableRegister) return;
+
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    const checkWidget = setInterval(() => {
+      if ((window as any).turnstile) {
+        clearInterval(checkWidget);
+        const widgetId = (window as any).turnstile.render(
+          '#turnstile-container',
+          {
+            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '',
+            callback: (token: string) => {
+              setTurnstileToken(token);
+            },
+            'error-callback': () => {
+              setTurnstileToken(null);
+            },
+            'expired-callback': () => {
+              setTurnstileToken(null);
+            },
+          }
+        );
+        turnstileWidgetRef.current = widgetId;
+      }
+    }, 100);
+
+    return () => {
+      clearInterval(checkWidget);
+      script.remove();
+      if (turnstileWidgetRef.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(turnstileWidgetRef.current);
+      }
+    };
+  }, [enableRegister]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -128,12 +173,22 @@ function LoginPageClient() {
     setError(null);
     if (!password || !username) return;
 
+    if (password !== confirmPassword) {
+      setError('两次输入的密码不一致');
+      return;
+    }
+
+    if (!turnstileToken) {
+      setError('请完成人机验证');
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, turnstileToken }),
       });
 
       if (res.ok) {
@@ -142,6 +197,9 @@ function LoginPageClient() {
       } else {
         const data = await res.json().catch(() => ({}));
         setError(data.error ?? '服务器错误');
+        if ((window as any).turnstile) {
+          (window as any).turnstile.reset(turnstileWidgetRef.current);
+        }
       }
     } catch (error) {
       setError('网络错误，请稍后重试');
@@ -149,8 +207,6 @@ function LoginPageClient() {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className='relative min-h-screen flex items-center justify-center px-4 overflow-hidden'>
@@ -194,8 +250,33 @@ function LoginPageClient() {
             />
           </div>
 
+          {/* 注册时显示确认密码 */}
+          {shouldAskUsername && enableRegister && (
+            <div>
+              <label htmlFor='confirm-password' className='sr-only'>
+                确认密码
+              </label>
+              <input
+                id='confirm-password'
+                type='password'
+                autoComplete='new-password'
+                className='block w-full rounded-lg border-0 py-3 px-4 text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-white/60 dark:ring-white/20 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:ring-2 focus:ring-green-500 focus:outline-none sm:text-base bg-white/60 dark:bg-zinc-800/60 backdrop-blur'
+                placeholder='确认密码'
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+          )}
+
           {error && (
             <p className='text-sm text-red-600 dark:text-red-400'>{error}</p>
+          )}
+
+          {/* Turnstile 验证容器 */}
+          {shouldAskUsername && enableRegister && (
+            <div className='flex justify-center'>
+              <div id='turnstile-container'></div>
+            </div>
           )}
 
           {/* 登录 / 注册按钮 */}
