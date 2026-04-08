@@ -96,9 +96,18 @@ function LoginPageClient() {
   }, []);
 
   // 初始化 Turnstile
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (typeof window === 'undefined' || !enableRegister || !isRegisterMode) return;
+    if (typeof window === 'undefined' || !enableRegister || !isRegisterMode) {
+      // 清理已存在的 widget
+      if (turnstileWidgetRef.current && (window as any).turnstile) {
+        (window as any).turnstile.remove(turnstileWidgetRef.current);
+        turnstileWidgetRef.current = null;
+      }
+      return;
+    }
+
+    // 如果 widget 已存在，不需要重新创建
+    if (turnstileWidgetRef.current) return;
 
     const script = document.createElement('script');
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
@@ -135,8 +144,7 @@ function LoginPageClient() {
         (window as any).turnstile.remove(turnstileWidgetRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enableRegister]);
+  }, [enableRegister, isRegisterMode]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
