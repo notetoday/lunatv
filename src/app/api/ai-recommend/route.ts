@@ -540,6 +540,7 @@ ${context?.title ? `**关于当前影片（${context.title}）：**
         'Authorization': `Bearer ${aiConfig.apiKey}`,
       },
       body: JSON.stringify(requestBody),
+      signal: AbortSignal.timeout(120_000),
     });
 
     if (!openaiResponse.ok) {
@@ -556,7 +557,7 @@ ${context?.title ? `**关于当前影片（${context.title}）：**
           errorDetails = parsedError.error.message;
         }
       } catch {
-        errorDetails = errorData.substring(0, 200); // 限制错误信息长度
+        errorDetails = `AI服务返回了无法解析的响应（HTTP ${openaiResponse.status}），请检查API地址和密钥配置`;
       }
 
       // 根据HTTP状态码提供更具体的错误信息
