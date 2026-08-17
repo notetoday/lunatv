@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { startTransition, type MouseEvent, type ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 
 interface FastLinkProps {
   href: string;
@@ -85,15 +85,11 @@ export function FastLink({
       return;
     }
 
-    // Mode 2: Transition navigation - non-blocking
-    if (useTransitionNav) {
-      startTransition(() => {
-        router.push(href);
-      });
-      return;
-    }
-
-    // Mode 3: Default - standard Next.js navigation
+    // Mode 2/3: Standard Next.js navigation.
+    // Note: router.push must NOT be wrapped in startTransition - doing so
+    // causes Next's App Router to intermittently drop the navigation on click
+    // (menu becomes unresponsive until a manual refresh). router.push already
+    // schedules its own transition internally.
     router.push(href);
   };
 
