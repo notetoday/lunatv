@@ -27,18 +27,10 @@
   background-color: #000 !important;
 }
 
-/* ===== Controls Hover Area Fix ===== */
-/* 增加控制栏底部的 hover 触发区域，解决全屏时需要移到很下面才能显示控制栏的问题 */
-.art-video-player .art-bottom {
-  /* 增加底部 padding，扩大 hover 区域 */
-  padding-bottom: 40px !important;
-}
-
-/* 全屏时增加更大的 hover 区域 */
-.art-video-player.art-fullscreen .art-bottom,
-.art-video-player.art-fullscreen-web .art-bottom {
-  padding-bottom: 60px !important;
-}
+/* ===== Controls Bottom Alignment ===== */
+/* 进度条/控制栏底部对齐：由 liquid-glass 插件负责（padding-bottom: var(--art-padding) = 10px）。
+   此前这里强加 padding-bottom: 40px/60px 会把进度条整体往上推，导致进度条不贴底，
+   且 .art-bottom 本身 inset:0 已铺满播放器，加 padding 并不会扩大 hover 区域，属无效覆盖。 */
 
 /* ===== Volume Control Hover Fix ===== */
 /* 修复音量面板 hover 时消失的问题 - 让面板始终接收鼠标事件 */
