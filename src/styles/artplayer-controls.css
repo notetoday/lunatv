@@ -4,11 +4,19 @@
    ⚠️ 重要：保留所有 !important 确保正确覆盖
    ============================================ */
 
-/* ===== 独立堆叠上下文 ===== */
+/* ===== 独立堆叠上下文 + 强制合成层 ===== */
 /* 播放器内部元素（video z-10、mask z-50、弹幕面板 2147483647、提示气泡 1000000） */
 /* 使用很高的 z-index，若不加隔离会泄漏到根堆叠上下文，滚动时遮挡顶部导航栏（含 AI 图标） */
+/* isolation: isolate 只创建堆叠上下文（影响绘制顺序），但 <video> 元素在移动端会被 */
+/* GPU 单独提升为合成层，仅靠 isolation 无法约束其层级，仍会盖住 fixed 头部。 */
+/* 额外加 transform: translateZ(0) 强制 .art-video-player 自身成为合成层，把 video 的 */
+/* 合成层收进播放器内，使其稳定处于顶部导航（z-40/z-50）之下。 */
+/* 注意：不要把 translateZ 加到 <main>/<body>/导航栏等宽容器上——transform 会创建包含块， */
+/* 导致其中 fixed 定位的模态框错位（历史已踩坑，见 changelog 6.x）。仅限播放器本身。 */
 .art-video-player {
   isolation: isolate;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* ===== Poster (封面图) ===== */
