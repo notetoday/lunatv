@@ -4,6 +4,13 @@
    ⚠️ 重要：保留所有 !important 确保正确覆盖
    ============================================ */
 
+/* ===== 独立堆叠上下文 ===== */
+/* 播放器内部元素（video z-10、mask z-50、弹幕面板 2147483647、提示气泡 1000000） */
+/* 使用很高的 z-index，若不加隔离会泄漏到根堆叠上下文，滚动时遮挡顶部导航栏（含 AI 图标） */
+.art-video-player {
+  isolation: isolate;
+}
+
 /* ===== Poster (封面图) ===== */
 .art-poster {
   background-size: contain !important;
